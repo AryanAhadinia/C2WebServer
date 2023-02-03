@@ -13,8 +13,6 @@
 
 FILE *log_file = NULL;
 
-// HTTP /////////////////////////////////////////////////////////////////////////
-
 typedef struct {
     char ** keys;
     char ** values;
@@ -205,8 +203,6 @@ char * get_param(HttpRequest * http_request, char * key) {
     return NULL;
 }
 
-// ThreadPool ///////////////////////////////////////////////////////////////////
-
 typedef struct {
     void * ( * worker)(void * );
     void * args;
@@ -308,8 +304,6 @@ void * worker(void * args) {
     }
     return NULL;
 }
-
-// WebServer ////////////////////////////////////////////////////////////////////
 
 typedef struct {
     char * path;
@@ -486,8 +480,6 @@ void accept_connections(WebServer * webServer, ConnectionDescriptor * connection
             break;
     }
 }
-
-// Handler
 
 HttpResponse * ping_handler(HttpRequest * http_request) {
     HttpResponse * http_response = response(200, "OK", "pong");
