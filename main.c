@@ -89,6 +89,9 @@ void parse_first_line(char * first_line, int first_line_length, HttpRequest * ht
     char * method = strtok(first_line, " ");
     char * path = strtok(NULL, " ");
     char * version = strtok(NULL, " ");
+    printf("method address: %ld", method);
+    printf("path address: %ld", path - method);
+    printf("version address: %ld", version - path);
     http_request -> method = method;
     http_request -> path = path;
     http_request -> version = version;
@@ -350,7 +353,7 @@ ConnectionDescriptor * start_web_server(WebServer * webServer) {
         perror("Cannot initialize socket.\n");
         exit(1);
     }
-    printf("Socket successfully initialized\n");
+    // printf("Socket successfully initialized\n");
 
     struct sockaddr_in host_addr;
     int host_addrlen = sizeof(host_addr);
@@ -363,13 +366,13 @@ ConnectionDescriptor * start_web_server(WebServer * webServer) {
         perror("Cannot bind socket to address.\n");
         exit(1);
     }
-    printf("Socket successfully binded\n");
+    // printf("Socket successfully binded\n");
 
     if (listen(sockfd, SOMAXCONN) != 0) {
         perror("Cannot listen for connections.\n");
         exit(1);
     }
-    printf("Listening for connections\n");
+    // printf("Listening for connections\n");
 
     ConnectionDescriptor * connectionDescriptor = (ConnectionDescriptor * ) malloc(sizeof(ConnectionDescriptor));
     connectionDescriptor -> sockfd = sockfd;
@@ -442,9 +445,20 @@ void * handle_request(void * args) {
 
     close(newsockfd);
     free(buffer);
-    free(http_request);
-    free(http_response);
     free(response_string);
+    printf("C1\n");
+
+    printf("C2\n");
+    free(http_request -> method);
+    printf("C3\n");
+    free(http_request -> body);
+    printf("C4\n");
+    free(http_request);
+    free(http_response -> body);
+    free(http_response -> status_message);
+    free(http_response);
+    free(handleRequestArgs);
+    return NULL;
 }
 
 void accept_connections(WebServer * webServer, ConnectionDescriptor * connectionDescriptor) {
@@ -460,7 +474,7 @@ void accept_connections(WebServer * webServer, ConnectionDescriptor * connection
             perror("Cannot accept connection.\n");
             continue;
         }
-        printf("Connection accepted\n");
+        // printf("Connection accepted\n");
 
         int id = id_counter++;
 
@@ -552,7 +566,7 @@ int main() {
     }
 
     WebServer * webServer = (WebServer * ) malloc(sizeof(WebServer));
-    create_web_server(webServer, 8080, 4, 8096, 10);
+    create_web_server(webServer, 8080, 4, 100, 10);
     add_new_handler(webServer, "/ping", ping_handler);
     add_new_handler(webServer, "/add", add_handler);
     add_new_handler(webServer, "/sub", sub_handler);
