@@ -1,6 +1,16 @@
-Id: 0, Time accepted: 1675421149834322
-Id: 0, Time thread dedicated: 1675421149834446
-Id: 0, Time thread dedicated: 1675421149834763
-Id: 1, Time accepted: 1675421152467476
-Id: 1, Time thread dedicated: 1675421152467530
-Id: 1, Time thread dedicated: 1675421152467715
+Id: 0, Time accepted: 1675433890668061
+Id: 0, Time thread dedicated: 1675433890668240
+Id: 0, Time thread dedicated: 1675433890668575
+Id: 1, Time accepted: 1675433890669485
+Id: 1, Time thread dedicated: 1675433890669624
+Id: 1, Time thread dedicated: 1675433895134830
+Id: 2, Time accepted: 1675433895138026
+Id: 2, Time thread dedicated: 1675433895138129
+Id: 3, Time accepted: 1675433895138339
+Id: 3, Time thread dedicated: 1675433895138415
+Id: 2, Time thread dedicated: 1675433899369018
+Id: 4, Time accepted: 1675433899372195
+Id: 4, Time thread dedicated: 1675433899372278
+Id: 3, Time thread dedicated: 1675433910928926
+Id: 5, Time accepted: 1675433910931927
+Id: 5, Time thread dedicated: 1675433910932018

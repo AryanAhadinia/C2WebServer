@@ -40,7 +40,6 @@ typedef struct {
 HttpRequest;
 
 typedef struct {
-    char * version;
     int status_code;
     char * status_message;
     Header * headers;
@@ -48,11 +47,50 @@ typedef struct {
 }
 HttpResponse;
 
+
+
+void free_query_parameters(QueryParameters *query_parameters){
+    for (int i = 0; i< query_parameters -> num_params ; i ++){
+        free(query_parameters -> keys[i]);
+        free(query_parameters -> values[i]);
+    }
+
+    free(query_parameters -> keys);
+    free(query_parameters -> values);
+
+    free(query_parameters);
+}
+
+void free_headers(Header *header){
+    for (int i = 0; i< header -> num_headers ; i ++){
+        free(header -> keys[i]);
+        free(header -> values[i]);
+    }
+
+    free(header -> keys);
+    free(header -> values);
+
+    free(header);
+}
+
 void free_request(HttpRequest * http_request) {
     free(http_request -> method);
     free(http_request -> path);
     free(http_request -> version);
+    free(http_request -> path_without_query);
+    free(http_request -> body);
+    free_headers(http_request -> headers);
+    free_query_parameters(http_request -> query_parameters);
+
     free(http_request);
+}
+
+void free_response(HttpResponse *http_response){
+    free(http_response -> status_message);
+    free(http_response -> body);
+    free_headers(http_response -> headers);
+
+    free(http_response);
 }
 
 void parse_request(char * request, HttpRequest * http_request);
@@ -77,27 +115,34 @@ void parse_request(char * request, HttpRequest * http_request) {
     char * first_line = malloc(first_line_length + 1); // free: done!
     strncpy(first_line, request, first_line_length);
     first_line[first_line_length] = '\0';
+
+
     parse_first_line(first_line, first_line_length, http_request);
+    printf("D4\n");
     free(first_line);
+    printf("D98\n");
 
     char * header_end = strstr(first_line_end + 2, "\r\n\r\n");
     int header_length = header_end - first_line_end - 2;
 
-    char * header = malloc(header_length + 1);
+    char * header = malloc(header_length + 1);  // free done
 
     strncpy(header, first_line_end + 2, header_length);
 
     header[header_length] = '\0';
 
-    http_request -> headers = malloc(sizeof(Header));
+    http_request -> headers = malloc(sizeof(Header));   /// pending
 
     parse_header(header, header_length, http_request -> headers);
+    free(header);
+
 
     int body_length = strlen(request) - (header_end - request) - 4;
     char * body = malloc(body_length + 1);
     strncpy(body, header_end + 4, body_length);
     body[body_length] = '\0';
     http_request -> body = body;
+    printf("R5\n");
 }
 
 void parse_first_line(char * first_line, int first_line_length, HttpRequest * http_request) {
@@ -110,52 +155,87 @@ void parse_first_line(char * first_line, int first_line_length, HttpRequest * ht
     strcpy(http_request -> path, path);
     http_request -> version = malloc(strlen(version) + 1); // free: done!
     strcpy(http_request -> version, version);
-    http_request -> query_parameters = malloc(sizeof(QueryParameters));
+    http_request -> query_parameters = malloc(sizeof(QueryParameters));  /// pending
     http_request -> path_without_query = parse_path(http_request -> query_parameters, path);
+    printf("D4\n");
 }
 
 char * parse_path(QueryParameters * query_parameters, char * path) {
-    char * path_copy = malloc(strlen(path) + 1);
-    strcpy(path_copy, path);
-    char * path_without_query = malloc(strlen(path) + 1);
-    strcpy(path_without_query, path);
-    char * query_start = strstr(path_copy, "?");
+    char * query_start = strstr(path, "?");
+    char * path_without_query;
     if (query_start != NULL) {
-        int path_without_query_length = query_start - path_copy;
+        int path_without_query_length = query_start - path;
+        path_without_query = malloc(path_without_query_length + 1);   /// pending
+        printf("C1\n");
+        strncpy(path_without_query, path, path_without_query_length);
+        printf("C1\n");
         path_without_query[path_without_query_length] = '\0';
+        printf("C1\n");
+
         char * query = query_start + 1;
         char * key = strtok(query, "=");
         char * value = strtok(NULL, "&");
-        query_parameters -> keys = malloc(sizeof(char * ));
+
+  printf("deboo %s, %s \n", key, value);
+
+
+        query_parameters -> keys = malloc(sizeof(char * ));  /// pending
         query_parameters -> values = malloc(sizeof(char * ));
-        query_parameters -> keys[0] = key;
-        query_parameters -> values[0] = value;
+
+        query_parameters -> keys[0] = malloc(sizeof(char) * strlen(key) + 1);
+        query_parameters -> values[0] = malloc(sizeof(char) * strlen(value) + 1);
+        strcpy(query_parameters -> keys[0] , key);
+        strcpy(query_parameters -> values[0] , value);
+
         query_parameters -> num_params = 1;
         while (value != NULL) {
             key = strtok(NULL, "=");
             value = strtok(NULL, "&");
+
+            printf("rouzbeh %s, %s \n", key, value);
+
             if (key != NULL && value != NULL) {
                 query_parameters -> keys = realloc(query_parameters -> keys, sizeof(char * ) * (query_parameters -> num_params + 1));
                 query_parameters -> values = realloc(query_parameters -> values, sizeof(char * ) * (query_parameters -> num_params + 1));
-                query_parameters -> keys[query_parameters -> num_params] = key;
-                query_parameters -> values[query_parameters -> num_params] = value;
+                
+                int idx = query_parameters -> num_params;
+                query_parameters -> keys[idx] = malloc(sizeof(char) * strlen(key) + 1);
+                query_parameters -> values[idx] = malloc(sizeof(char) * strlen(value) + 1);
+                strcpy(query_parameters -> keys[idx] , key);
+                strcpy(query_parameters -> values[idx], value);
+                
+                printf("!!!!!!!!%s", key);
+                printf("!!!!!!!!%s", value);
+
                 query_parameters -> num_params++;
             }
         }
     }
+    else{
+        path_without_query = malloc(strlen(path) + 1);   /// pending
+        strcpy(path_without_query, path);
+    }
+
+    // free(path_copy);
+    printf("C7\n");
     return path_without_query;
 }
 
 void parse_header(char * header, int header_length, Header * http_header) {
-    char * header_copy = malloc(header_length + 1);
-    strncpy(header_copy, header, header_length);
-    header_copy[header_length] = '\0';
-    char * key = strtok(header_copy, ":");
+    // char * header_copy = malloc(header_length + 1);
+    // strncpy(header_copy, header, header_length);
+    // header_copy[header_length] = '\0';
+    char * key = strtok(header, ":");
     char * value = strtok(NULL, "\r");
     http_header -> keys = malloc(sizeof(char * ));
     http_header -> values = malloc(sizeof(char * ));
-    http_header -> keys[0] = key;
-    http_header -> values[0] = value + 1;
+
+    
+    http_header -> keys[0] = malloc(sizeof(char) * strlen(key) + 1);
+    http_header -> values[0] = malloc(sizeof(char) * strlen(value) + 1);
+    strcpy(http_header -> keys[0] , key);
+    strcpy(http_header -> values[0] , value + 1);
+
     http_header -> num_headers = 1;
     while (value != NULL) {
         key = strtok(NULL, ":");
@@ -165,8 +245,13 @@ void parse_header(char * header, int header_length, Header * http_header) {
             value = value + 1;
             http_header -> keys = realloc(http_header -> keys, sizeof(char * ) * (http_header -> num_headers + 1));
             http_header -> values = realloc(http_header -> values, sizeof(char * ) * (http_header -> num_headers + 1));
-            http_header -> keys[http_header -> num_headers] = key;
-            http_header -> values[http_header -> num_headers] = value;
+                            
+            int idx = http_header -> num_headers;
+            http_header -> keys[idx] = malloc(sizeof(char) * strlen(key) + 1);
+            http_header -> values[idx] = malloc(sizeof(char) * strlen(value) + 1);
+            strcpy(http_header -> keys[idx] , key);
+            strcpy(http_header -> values[idx], value);
+        
             http_header -> num_headers++;
         }
     }
@@ -175,28 +260,42 @@ void parse_header(char * header, int header_length, Header * http_header) {
 HttpResponse * response(int status_code, char * status_message, char * body) {
     HttpResponse * http_response = malloc(sizeof(HttpResponse));
     http_response -> status_code = status_code;
-    http_response -> status_message = status_message;
+
+    http_response -> status_message = malloc(10);
+    strcpy(http_response -> status_message, status_message);
     http_response -> body = body;
     http_response -> headers = malloc(sizeof(Header));
-    http_response -> headers -> keys = malloc(sizeof(char * ) * 1024);
-    http_response -> headers -> values = malloc(sizeof(char * ) * 1024);
     http_response -> headers -> num_headers = 0;
     return http_response;
 }
 
 void add_header(HttpResponse * http_response, char * key, char * value) {
-    http_response -> headers -> keys[http_response -> headers -> num_headers] = key;
-    http_response -> headers -> values[http_response -> headers -> num_headers] = value;
+    if (http_response -> headers -> num_headers == 0){
+        http_response -> headers -> keys = malloc(sizeof(char * ));
+        http_response -> headers -> values = malloc(sizeof(char * ));
+    }
+    else{
+        http_response -> headers -> keys = realloc(http_response -> headers -> keys, sizeof(char * ) * (http_response -> headers -> num_headers + 1));
+        http_response -> headers -> values = realloc(http_response -> headers -> values, sizeof(char * ) * (http_response -> headers -> num_headers + 1));
+    }
+
+    int idx = http_response -> headers -> num_headers;
+    http_response -> headers -> keys[idx] = malloc(sizeof(char) * strlen(key) + 1);
+    http_response -> headers -> values[idx] = malloc(sizeof(char) * strlen(value) + 1);
+    strcpy(http_response -> headers -> keys[idx] , key);
+    strcpy(http_response -> headers -> values[idx], value);
+
     http_response -> headers -> num_headers++;
 }
 
 char * serialize_response(HttpResponse * http_response) {
+    printf("holo\n");
     char * status_line = malloc(100);
     sprintf(status_line, "HTTP/1.1 %d %s\r\n", http_response -> status_code, http_response -> status_message);
     char * headers = malloc(1000);
     strcpy(headers, "");
+    char * header = malloc(100);
     for (int i = 0; i < http_response -> headers -> num_headers; i++) {
-        char * header = malloc(100);
         sprintf(header, "%s: %s\r\n", http_response -> headers -> keys[i], http_response -> headers -> values[i]);
         strcat(headers, header);
     }
@@ -205,19 +304,30 @@ char * serialize_response(HttpResponse * http_response) {
     if (http_response -> body != NULL) {
         sprintf(body, "\r\n%s", http_response -> body);
     }
+    printf("salam\n");
     char * response = malloc(strlen(status_line) + strlen(headers) + strlen(body) + 1);
     strcpy(response, status_line);
     strcat(response, headers);
     strcat(response, body);
+    free(status_line);
+    free(header);
+    free(headers);
+    free(body);
     return response;
 }
 
 char * get_param(HttpRequest * http_request, char * key) {
+    printf("---%s---- \n", key);
     for (int i = 0; i < http_request -> query_parameters -> num_params; i++) {
+        printf("3---%s---- \n", http_request -> query_parameters -> keys[i]);
+        printf("4---%s---- \n", http_request -> query_parameters -> values[i]);
         if (strcmp(http_request -> query_parameters -> keys[i], key) == 0) {
+            printf("1---%s---- \n", http_request -> query_parameters -> keys[i]);
+            printf("2---%s---- \n", http_request -> query_parameters -> values[i]);
             return http_request -> query_parameters -> values[i];
         }
     }
+    printf("---%d---- \n", http_request -> query_parameters -> num_params);
     return NULL;
 }
 
@@ -426,25 +536,36 @@ void * handle_request(void * args) {
     HttpRequest * http_request = malloc(sizeof(HttpRequest));
     parse_request(buffer, http_request);
     http_request -> id = id;
+    printf("uuu\n");
 
     Handler * handler = NULL;
     for (int i = 0; i < webServer -> num_handlers; i++) {
-        if (strncmp(webServer -> handlers[i].path, http_request -> path, strlen(webServer -> handlers[i].path)) == 0) {
+        if (strncmp(webServer -> handlers[i].path, http_request -> path_without_query, strlen(webServer -> handlers[i].path)) == 0) {
             if (handler == NULL || strlen(webServer -> handlers[i].path) > strlen(handler -> path)) {
                 handler = & webServer -> handlers[i];
             }
         }
     }
 
+
     HttpResponse * http_response = NULL;
 
     if (handler != NULL) {
+        if (handler -> handler_function == NULL)
+            printf("yyyy\n");
+        printf("iii\n");
         http_response = handler -> handler_function(http_request);
+        printf("iii\n");
     } else {
         http_response = response(404, "Not Found", "");
     }
 
+    free_request(http_request);
+
     char * response_string = serialize_response(http_response);
+    
+
+    printf("88yu\n");
 
     struct timeval time_process_finished;
     gettimeofday(&time_process_finished, NULL);
@@ -458,6 +579,7 @@ void * handle_request(void * args) {
         return NULL;
     }
 
+    free_response(http_response);
     close(newsockfd);
     free(buffer);
     free(response_string);
@@ -500,7 +622,9 @@ void accept_connections(WebServer * webServer, ConnectionDescriptor * connection
 }
 
 HttpResponse * ping_handler(HttpRequest * http_request) {
-    HttpResponse * http_response = response(200, "OK", "pong");
+    char * pong_string = malloc(10);
+    strcpy(pong_string, "pong");
+    HttpResponse * http_response = response(200, "OK", pong_string);
     add_header(http_response, "Content-Type", "text/plain");
     return http_response;
 }
@@ -513,7 +637,7 @@ HttpResponse * add_handler(HttpRequest * http_request) {
     int sum = a_int + b_int;
     char * sum_string = malloc(10);
     sprintf(sum_string, "%d", sum);
-    HttpResponse * http_response = response(200, "OK", sum_string);
+    HttpResponse * http_response = response(200, "OK" , sum_string);
     add_header(http_response, "Content-Type", "text/plain");
     return http_response;
 }
