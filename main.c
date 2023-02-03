@@ -48,6 +48,13 @@ typedef struct {
 }
 HttpResponse;
 
+void free_request(HttpRequest * http_request) {
+    free(http_request -> method);
+    free(http_request -> path);
+    free(http_request -> version);
+    free(http_request);
+}
+
 void parse_request(char * request, HttpRequest * http_request);
 
 void parse_first_line(char * first_line, int first_line_length, HttpRequest * http_request);
@@ -67,17 +74,25 @@ char * get_param(HttpRequest * http_request, char * key);
 void parse_request(char * request, HttpRequest * http_request) {
     char * first_line_end = strstr(request, "\r\n");
     int first_line_length = first_line_end - request;
-    char * first_line = malloc(first_line_length + 1);
+    char * first_line = malloc(first_line_length + 1); // free: done!
     strncpy(first_line, request, first_line_length);
     first_line[first_line_length] = '\0';
     parse_first_line(first_line, first_line_length, http_request);
+    free(first_line);
+
     char * header_end = strstr(first_line_end + 2, "\r\n\r\n");
     int header_length = header_end - first_line_end - 2;
+
     char * header = malloc(header_length + 1);
+
     strncpy(header, first_line_end + 2, header_length);
+
     header[header_length] = '\0';
+
     http_request -> headers = malloc(sizeof(Header));
+
     parse_header(header, header_length, http_request -> headers);
+
     int body_length = strlen(request) - (header_end - request) - 4;
     char * body = malloc(body_length + 1);
     strncpy(body, header_end + 4, body_length);
@@ -89,11 +104,12 @@ void parse_first_line(char * first_line, int first_line_length, HttpRequest * ht
     char * method = strtok(first_line, " ");
     char * path = strtok(NULL, " ");
     char * version = strtok(NULL, " ");
-    printf("first_line address: %p\n", first_line);
-    printf("method address: %p\n", method);
-    http_request -> method = method;
-    http_request -> path = path;
-    http_request -> version = version;
+    http_request -> method = malloc(strlen(method) + 1); // free: done!
+    strcpy(http_request -> method, method);
+    http_request -> path = malloc(strlen(path) + 1); // free: done!
+    strcpy(http_request -> path, path);
+    http_request -> version = malloc(strlen(version) + 1); // free: done!
+    strcpy(http_request -> version, version);
     http_request -> query_parameters = malloc(sizeof(QueryParameters));
     http_request -> path_without_query = parse_path(http_request -> query_parameters, path);
 }
@@ -352,7 +368,7 @@ ConnectionDescriptor * start_web_server(WebServer * webServer) {
         perror("Cannot initialize socket.\n");
         exit(1);
     }
-    // printf("Socket successfully initialized\n");
+    printf("Socket successfully initialized\n");
 
     struct sockaddr_in host_addr;
     int host_addrlen = sizeof(host_addr);
@@ -365,13 +381,13 @@ ConnectionDescriptor * start_web_server(WebServer * webServer) {
         perror("Cannot bind socket to address.\n");
         exit(1);
     }
-    // printf("Socket successfully binded\n");
+    printf("Socket successfully binded\n");
 
     if (listen(sockfd, SOMAXCONN) != 0) {
         perror("Cannot listen for connections.\n");
         exit(1);
     }
-    // printf("Listening for connections\n");
+    printf("Listening for connections\n");
 
     ConnectionDescriptor * connectionDescriptor = (ConnectionDescriptor * ) malloc(sizeof(ConnectionDescriptor));
     connectionDescriptor -> sockfd = sockfd;
@@ -445,17 +461,6 @@ void * handle_request(void * args) {
     close(newsockfd);
     free(buffer);
     free(response_string);
-    printf("C1\n");
-
-    printf("C2\n");
-    free(http_request -> method);
-    printf("C3\n");
-    free(http_request -> body);
-    printf("C4\n");
-    free(http_request);
-    free(http_response -> body);
-    free(http_response -> status_message);
-    free(http_response);
     free(handleRequestArgs);
     return NULL;
 }
@@ -473,7 +478,7 @@ void accept_connections(WebServer * webServer, ConnectionDescriptor * connection
             perror("Cannot accept connection.\n");
             continue;
         }
-        // printf("Connection accepted\n");
+        printf("Connection accepted\n");
 
         int id = id_counter++;
 

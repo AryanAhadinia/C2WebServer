@@ -1,3 +1,6 @@
-Id: 0, Time accepted: 1675419567559172
-Id: 0, Time thread dedicated: 1675419567559268
-Id: 0, Time thread dedicated: 1675419567559571
+Id: 0, Time accepted: 1675421149834322
+Id: 0, Time thread dedicated: 1675421149834446
+Id: 0, Time thread dedicated: 1675421149834763
+Id: 1, Time accepted: 1675421152467476
+Id: 1, Time thread dedicated: 1675421152467530
+Id: 1, Time thread dedicated: 1675421152467715
