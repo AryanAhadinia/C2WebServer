@@ -120,9 +120,7 @@ void parse_request(char * request, HttpRequest * http_request) {
 
 
     parse_first_line(first_line, first_line_length, http_request);
-    printf("D4\n");
     free(first_line);
-    printf("D98\n");
 
     char * header_end = strstr(first_line_end + 2, "\r\n\r\n");
     int header_length = header_end - first_line_end - 2;
@@ -144,7 +142,6 @@ void parse_request(char * request, HttpRequest * http_request) {
     strncpy(body, header_end + 4, body_length);
     body[body_length] = '\0';
     http_request -> body = body;
-    printf("R5\n");
 }
 
 void parse_first_line(char * first_line, int first_line_length, HttpRequest * http_request) {
@@ -160,7 +157,6 @@ void parse_first_line(char * first_line, int first_line_length, HttpRequest * ht
     http_request -> query_parameters = malloc(sizeof(QueryParameters));  /// pending
     http_request -> query_parameters -> num_params = 0;
     http_request -> path_without_query = parse_path(http_request -> query_parameters, path);
-    printf("D4\n");
 }
 
 char * parse_path(QueryParameters * query_parameters, char * path) {
@@ -169,18 +165,12 @@ char * parse_path(QueryParameters * query_parameters, char * path) {
     if (query_start != NULL) {
         int path_without_query_length = query_start - path;
         path_without_query = malloc(path_without_query_length + 1);   /// pending
-        printf("C1\n");
         strncpy(path_without_query, path, path_without_query_length);
-        printf("C1\n");
         path_without_query[path_without_query_length] = '\0';
-        printf("C1\n");
 
         char * query = query_start + 1;
         char * key = strtok(query, "=");
         char * value = strtok(NULL, "&");
-
-  printf("deboo %s, %s \n", key, value);
-
 
         query_parameters -> keys = malloc(sizeof(char * ));  /// pending
         query_parameters -> values = malloc(sizeof(char * ));
@@ -195,8 +185,6 @@ char * parse_path(QueryParameters * query_parameters, char * path) {
             key = strtok(NULL, "=");
             value = strtok(NULL, "&");
 
-            printf("rouzbeh %s, %s \n", key, value);
-
             if (key != NULL && value != NULL) {
                 query_parameters -> keys = realloc(query_parameters -> keys, sizeof(char * ) * (query_parameters -> num_params + 1));
                 query_parameters -> values = realloc(query_parameters -> values, sizeof(char * ) * (query_parameters -> num_params + 1));
@@ -207,9 +195,6 @@ char * parse_path(QueryParameters * query_parameters, char * path) {
                 strcpy(query_parameters -> keys[idx] , key);
                 strcpy(query_parameters -> values[idx], value);
                 
-                printf("!!!!!!!!%s", key);
-                printf("!!!!!!!!%s", value);
-
                 query_parameters -> num_params++;
             }
         }
@@ -219,8 +204,6 @@ char * parse_path(QueryParameters * query_parameters, char * path) {
         strcpy(path_without_query, path);
     }
 
-    // free(path_copy);
-    printf("C7\n");
     return path_without_query;
 }
 
@@ -292,7 +275,6 @@ void add_header(HttpResponse * http_response, char * key, char * value) {
 }
 
 char * serialize_response(HttpResponse * http_response) {
-    printf("holo\n");
     char * status_line = malloc(100);
     sprintf(status_line, "HTTP/1.1 %d %s\r\n", http_response -> status_code, http_response -> status_message);
     char * headers = malloc(1000);
@@ -307,7 +289,6 @@ char * serialize_response(HttpResponse * http_response) {
     if (http_response -> body != NULL) {
         sprintf(body, "\r\n%s", http_response -> body);
     }
-    printf("salam\n");
     char * response = malloc(strlen(status_line) + strlen(headers) + strlen(body) + 1);
     strcpy(response, status_line);
     strcat(response, headers);
@@ -320,17 +301,11 @@ char * serialize_response(HttpResponse * http_response) {
 }
 
 char * get_param(HttpRequest * http_request, char * key) {
-    printf("---%s---- \n", key);
     for (int i = 0; i < http_request -> query_parameters -> num_params; i++) {
-        printf("3---%s---- \n", http_request -> query_parameters -> keys[i]);
-        printf("4---%s---- \n", http_request -> query_parameters -> values[i]);
         if (strcmp(http_request -> query_parameters -> keys[i], key) == 0) {
-            printf("1---%s---- \n", http_request -> query_parameters -> keys[i]);
-            printf("2---%s---- \n", http_request -> query_parameters -> values[i]);
             return http_request -> query_parameters -> values[i];
         }
     }
-    printf("---%d---- \n", http_request -> query_parameters -> num_params);
     return NULL;
 }
 
@@ -346,6 +321,7 @@ typedef struct {
     int start;
     int end;
     pthread_mutex_t lock;
+    sem_t semaphore;
 }
 TaskQueue;
 
@@ -353,18 +329,15 @@ typedef struct {
     TaskQueue * taskQueue;
     int numThreads;
     int open;
-    sem_t semaphore;
     pthread_t * workerThreads;
 }
 ThreadPool;
 
 void createTaskQueue(TaskQueue * taskQueue, int size);
 
-void enqueueTaskQueue(TaskQueue * taskQueue, Task * task);
+int enqueueTaskQueue(TaskQueue * taskQueue, Task * task);
 
 Task * dequeueTaskQueue(TaskQueue * taskQueue);
-
-int isTaskQueueEmpty(TaskQueue * taskQueue);
 
 void createThreadPool(ThreadPool * threadPool, TaskQueue * taskQueue, int( * priority)(void * ), int numThreads, int queueSize);
 
@@ -379,28 +352,27 @@ void createTaskQueue(TaskQueue * taskQueue, int size) {
     taskQueue -> start = 0;
     taskQueue -> end = 0;
     taskQueue -> size = size;
+    sem_init( & taskQueue -> semaphore, 1, 0);
+    // initial lock 
     pthread_mutex_init( & taskQueue -> lock, NULL);
 }
 
-void enqueueTaskQueue(TaskQueue * taskQueue, Task * task) {
+int enqueueTaskQueue(TaskQueue * taskQueue, Task * task) {
     pthread_mutex_lock( & taskQueue -> lock);
     if (taskQueue -> start == (taskQueue -> end + 1) % taskQueue -> size) {
         pthread_mutex_unlock( & taskQueue -> lock);
-        return;
+        return 0;
     }
-    printf("index: %d\n", taskQueue -> end);
     taskQueue -> tasks[taskQueue -> end] = task;
     taskQueue -> end = (taskQueue -> end + 1) % taskQueue -> size;
+    sem_post( & taskQueue -> semaphore);
     pthread_mutex_unlock( & taskQueue -> lock);
+    return 1;
 }
 
 Task * dequeueTaskQueue(TaskQueue * taskQueue) {
+    sem_wait( & taskQueue -> semaphore);
     pthread_mutex_lock( & taskQueue -> lock);
-    if (taskQueue -> start % taskQueue->size == taskQueue -> end % taskQueue -> size) {
-        pthread_mutex_unlock( & taskQueue -> lock);
-        return NULL;
-    }
-    printf("index: %d\n", taskQueue -> end);
     Task * task = taskQueue -> tasks[taskQueue -> start];
     taskQueue -> tasks[taskQueue -> start] = NULL;
     taskQueue -> start = (taskQueue -> start + 1) % taskQueue -> size;
@@ -408,15 +380,10 @@ Task * dequeueTaskQueue(TaskQueue * taskQueue) {
     return task;
 }
 
-int isTaskQueueEmpty(TaskQueue * taskQueue) {
-    return taskQueue -> start == taskQueue -> end;
-}
-
 void createThreadPool(ThreadPool * threadPool, TaskQueue * taskQueue, int( * priority)(void * ), int numThreads, int queueSize) {
     threadPool -> taskQueue = taskQueue;
     threadPool -> numThreads = numThreads;
     threadPool -> open = 1;
-    sem_init( & threadPool -> semaphore, 0, 0);
     threadPool -> workerThreads = (pthread_t * ) malloc(sizeof(pthread_t) * numThreads);
     for (size_t i = 0; i < numThreads; i++)
         pthread_create( & threadPool -> workerThreads[i], NULL, worker, threadPool);
@@ -427,8 +394,6 @@ void addTaskThreadPool(ThreadPool * threadPool, void * ( * function_worker)(void
     task -> worker = function_worker;
     task -> args = args;
     enqueueTaskQueue(threadPool -> taskQueue, task);
-    sem_post( & threadPool -> semaphore);
-    printf("semaphore: %d\n", threadPool -> semaphore);
 }
 
 void free_task(Task * task) {
@@ -439,11 +404,12 @@ void free_task(Task * task) {
 void * worker(void * args) {
     ThreadPool * threadPool = (ThreadPool * ) args;
     while (threadPool -> open) {
-        sem_wait( & threadPool -> semaphore);
         Task * task = dequeueTaskQueue(threadPool -> taskQueue);
-        if (task != NULL)
+        printf("Dequeued");
+        // if (task != NULL) {
             task -> worker(task -> args);
-        free_task(task);
+            // free_task(task);
+        // }
     }
     return NULL;
 }
@@ -551,7 +517,6 @@ void * handle_request(void * args) {
     HttpRequest * http_request = malloc(sizeof(HttpRequest));
     parse_request(buffer, http_request);
     http_request -> id = id;
-    printf("uuu\n");
 
     Handler * handler = NULL;
     for (int i = 0; i < webServer -> num_handlers; i++) {
@@ -566,11 +531,7 @@ void * handle_request(void * args) {
     HttpResponse * http_response = NULL;
 
     if (handler != NULL) {
-        if (handler -> handler_function == NULL)
-            printf("yyyy\n");
-        printf("iii\n");
         http_response = handler -> handler_function(http_request);
-        printf("iii\n");
     } else {
         http_response = response(404, "Not Found", "");
     }
@@ -578,9 +539,6 @@ void * handle_request(void * args) {
     free_request(http_request);
 
     char * response_string = serialize_response(http_response);
-    
-
-    printf("88yu\n");
 
     struct timeval time_process_finished;
     gettimeofday(&time_process_finished, NULL);
@@ -711,7 +669,7 @@ int main() {
     }
 
     WebServer * webServer = (WebServer * ) malloc(sizeof(WebServer));
-    create_web_server(webServer, 8080, 8, 1024, 10);
+    create_web_server(webServer, 8080, 4, 3, 10);
     add_new_handler(webServer, "/ping", ping_handler);
     add_new_handler(webServer, "/add", add_handler);
     add_new_handler(webServer, "/sub", sub_handler);
@@ -721,3 +679,39 @@ int main() {
     accept_connections(webServer, connectionDescriptor);
     return 0;
 }
+
+
+// typedef struct {
+//     int n;
+// } FactArgs;
+
+// void *factorial_worker(void *arg) {
+//     FactArgs *fact_args = (FactArgs *) arg;
+//     int n = fact_args->n;
+//     int fact = 1;
+//     for (int i = 1; i <= n; i++) {
+//         fact *= i;
+//     }
+//     printf("Factorial of %d is %d\n", n, fact);
+//     // wait 
+//     sleep(1);
+//     return (void *) fact;
+// }
+
+// int main() {
+//     TaskQueue *taskQueue = (TaskQueue *) malloc(sizeof(TaskQueue));
+//     createTaskQueue(taskQueue, 10);
+//     ThreadPool *threadPool = (ThreadPool *) malloc(sizeof(ThreadPool));
+//     createThreadPool(threadPool, taskQueue, NULL, 10, 10);
+//     for (int i = 1; i <= 1000000; i++) {
+//         FactArgs *fact_args = (FactArgs *) malloc(sizeof(FactArgs));
+//         fact_args->n = i % 10;
+//         addTaskThreadPool(threadPool, factorial_worker, fact_args);
+//     }
+//     sleep(10);
+//     // thread joins
+//     for (int i = 0; i < threadPool->numThreads; i++) {
+//         pthread_join(threadPool->threads[i], NULL);
+//     }
+//     return 0;
+// }
