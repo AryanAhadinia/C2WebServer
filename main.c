@@ -89,9 +89,8 @@ void parse_first_line(char * first_line, int first_line_length, HttpRequest * ht
     char * method = strtok(first_line, " ");
     char * path = strtok(NULL, " ");
     char * version = strtok(NULL, " ");
-    printf("method address: %ld", method);
-    printf("path address: %ld", path - method);
-    printf("version address: %ld", version - path);
+    printf("first_line address: %p\n", first_line);
+    printf("method address: %p\n", method);
     http_request -> method = method;
     http_request -> path = path;
     http_request -> version = version;
