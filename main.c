@@ -383,9 +383,12 @@ void createTaskQueue(TaskQueue * taskQueue, int size) {
 }
 
 void enqueueTaskQueue(TaskQueue * taskQueue, Task * task) {
-    if (taskQueue -> start == (taskQueue -> end + 1) % taskQueue -> size)
-        return;
     pthread_mutex_lock( & taskQueue -> lock);
+    if (taskQueue -> start == (taskQueue -> end + 1) % taskQueue -> size) {
+        pthread_mutex_unlock( & taskQueue -> lock);
+        return;
+    }
+    printf("index: %d\n", taskQueue -> end);
     taskQueue -> tasks[taskQueue -> end] = task;
     taskQueue -> end = (taskQueue -> end + 1) % taskQueue -> size;
     pthread_mutex_unlock( & taskQueue -> lock);
@@ -393,11 +396,13 @@ void enqueueTaskQueue(TaskQueue * taskQueue, Task * task) {
 
 Task * dequeueTaskQueue(TaskQueue * taskQueue) {
     pthread_mutex_lock( & taskQueue -> lock);
-    if (taskQueue -> start == taskQueue -> end) {
+    if (taskQueue -> start % taskQueue->size == taskQueue -> end % taskQueue -> size) {
         pthread_mutex_unlock( & taskQueue -> lock);
         return NULL;
     }
+    printf("index: %d\n", taskQueue -> end);
     Task * task = taskQueue -> tasks[taskQueue -> start];
+    taskQueue -> tasks[taskQueue -> start] = NULL;
     taskQueue -> start = (taskQueue -> start + 1) % taskQueue -> size;
     pthread_mutex_unlock( & taskQueue -> lock);
     return task;
@@ -423,6 +428,12 @@ void addTaskThreadPool(ThreadPool * threadPool, void * ( * function_worker)(void
     task -> args = args;
     enqueueTaskQueue(threadPool -> taskQueue, task);
     sem_post( & threadPool -> semaphore);
+    printf("semaphore: %d\n", threadPool -> semaphore);
+}
+
+void free_task(Task * task) {
+    free(task -> args);
+    free(task);
 }
 
 void * worker(void * args) {
@@ -432,6 +443,7 @@ void * worker(void * args) {
         Task * task = dequeueTaskQueue(threadPool -> taskQueue);
         if (task != NULL)
             task -> worker(task -> args);
+        free_task(task);
     }
     return NULL;
 }
@@ -586,7 +598,7 @@ void * handle_request(void * args) {
     close(newsockfd);
     free(buffer);
     free(response_string);
-    free(handleRequestArgs);
+    // free(handleRequestArgs);
     return NULL;
 }
 
@@ -699,7 +711,7 @@ int main() {
     }
 
     WebServer * webServer = (WebServer * ) malloc(sizeof(WebServer));
-    create_web_server(webServer, 8080, 4, 100, 10);
+    create_web_server(webServer, 8080, 8, 1024, 10);
     add_new_handler(webServer, "/ping", ping_handler);
     add_new_handler(webServer, "/add", add_handler);
     add_new_handler(webServer, "/sub", sub_handler);
