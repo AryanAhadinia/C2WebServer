@@ -50,13 +50,15 @@ HttpResponse;
 
 
 void free_query_parameters(QueryParameters *query_parameters){
-    for (int i = 0; i< query_parameters -> num_params ; i ++){
-        free(query_parameters -> keys[i]);
-        free(query_parameters -> values[i]);
-    }
+    if (query_parameters -> num_params != 0){
+        for (int i = 0; i< query_parameters -> num_params ; i ++){
+            free(query_parameters -> keys[i]);
+            free(query_parameters -> values[i]);
+        }
 
-    free(query_parameters -> keys);
-    free(query_parameters -> values);
+        free(query_parameters -> keys);
+        free(query_parameters -> values);
+    }
 
     free(query_parameters);
 }
@@ -156,6 +158,7 @@ void parse_first_line(char * first_line, int first_line_length, HttpRequest * ht
     http_request -> version = malloc(strlen(version) + 1); // free: done!
     strcpy(http_request -> version, version);
     http_request -> query_parameters = malloc(sizeof(QueryParameters));  /// pending
+    http_request -> query_parameters -> num_params = 0;
     http_request -> path_without_query = parse_path(http_request -> query_parameters, path);
     printf("D4\n");
 }
@@ -622,7 +625,7 @@ void accept_connections(WebServer * webServer, ConnectionDescriptor * connection
 }
 
 HttpResponse * ping_handler(HttpRequest * http_request) {
-    char * pong_string = malloc(10);
+    char * pong_string = malloc(10 * sizeof(char));
     strcpy(pong_string, "pong");
     HttpResponse * http_response = response(200, "OK", pong_string);
     add_header(http_response, "Content-Type", "text/plain");
@@ -674,7 +677,9 @@ HttpResponse * div_handler(HttpRequest * http_request) {
     int a_int = atoi(a);
     int b_int = atoi(b);
     if (b_int == 0) {
-        HttpResponse * http_response = response(400, "Bad Request", "Cannot divide by 0");
+        char * cannot_string = malloc(50* sizeof(char));
+        strcpy(cannot_string, "Cannot divide by 0");
+        HttpResponse * http_response = response(400, "Bad Request", cannot_string);
         add_header(http_response, "Content-Type", "text/plain");
         return http_response;
     }
