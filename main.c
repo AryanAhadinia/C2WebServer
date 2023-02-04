@@ -542,8 +542,8 @@ void * handle_request(void * args) {
 
     struct timeval time_process_finished;
     gettimeofday(&time_process_finished, NULL);
-    printf("Id: %d, Time thread dedicated: %ld\n", id, time_process_finished.tv_sec * 1000000 + time_process_finished.tv_usec);
-    fprintf(log_file, "Id: %d, Time thread dedicated: %ld\n", id, time_process_finished.tv_sec * 1000000 + time_process_finished.tv_usec);
+    printf("Id: %d, Time thread finished: %ld\n", id, time_process_finished.tv_sec * 1000000 + time_process_finished.tv_usec);
+    fprintf(log_file, "Id: %d, Time thread finished: %ld\n", id, time_process_finished.tv_sec * 1000000 + time_process_finished.tv_usec);
     fflush(log_file);
 
     int valwrite = write(newsockfd, response_string, strlen(response_string));
@@ -669,7 +669,7 @@ int main() {
     }
 
     WebServer * webServer = (WebServer * ) malloc(sizeof(WebServer));
-    create_web_server(webServer, 8080, 4, 3, 10);
+    create_web_server(webServer, 8080, 1, 20, 10);
     add_new_handler(webServer, "/ping", ping_handler);
     add_new_handler(webServer, "/add", add_handler);
     add_new_handler(webServer, "/sub", sub_handler);
